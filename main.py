@@ -8,8 +8,8 @@ from settings import settings
 from models import Videos, PostVideoModel, FilterVideoParams, StatusQuery
 
 def create_db():
-    """Функция создает таблицу videos при запуске API. Если таблица существует, то не создаает"""
-    SQLModel.metadata.create_all(engine) # функция тут малость не к месту, но как-то странно создавать отдельный
+    """Функция создает таблицу videos при запуске API. Если таблица существует, то не создает"""
+    SQLModel.metadata.create_all(engine) # функция в main.py малость не к месту, но как-то странно создавать отдельный
                                          # файл ради двух строк кода
 
 @asynccontextmanager
@@ -47,9 +47,9 @@ def get_videos(*, session: Session = Depends(get_session), filter_query: Annotat
     if filter_query.status:
         sql_query = sql_query.where(col(Videos.status).in_(filter_query.status))
     if filter_query.start_time_from:
-        sql_query = sql_query.where(Videos.created_at >= filter_query.start_time_from)
+        sql_query = sql_query.where(Videos.start_time >= filter_query.start_time_from)
     if filter_query.start_time_to:
-        sql_query = sql_query.where(Videos.created_at >= filter_query.start_time_to)
+        sql_query = sql_query.where(Videos.start_time < filter_query.start_time_to)
     videos = session.exec(sql_query).all()
     if not videos:
         raise HTTPException(status_code=404, detail="No videos were found")
