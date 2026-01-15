@@ -1,6 +1,6 @@
 [project]
 name = "video-api"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = [
     {name = "gagarin yaroslav",email = "gagarinyaroslav3@gmail.com"}
@@ -15,7 +15,7 @@ dependencies = [
     "psycopg2-binary (>=2.9.11,<3.0.0)",
     "pyyaml (>=6.0.3,<7.0.0)",
 ]
-
+package-mode = false
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
