@@ -6,6 +6,9 @@ from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, select, col
 from settings import settings
 from models import Videos, PostVideoModel, FilterVideoParams, StatusQuery
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 def create_db():
     """Функция создает таблицу videos при запуске API. Если таблица существует, то не создает"""
@@ -15,13 +18,15 @@ def create_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Жизненный цикл приложения: создать базу данных и запуститься"""
+    logger.info("Начата работа веб-приложения")
     create_db()
     yield
+    logger.info("Работа веб-приложения завершена")
 app = FastAPI(lifespan=lifespan)
 
 postgres_url = (f"postgresql://{settings.postgres_user}:{settings.postgres_password}@{settings.postgres_host}:"
               f"{settings.postgres_port}/{settings.postgres_db}") # Строка для подключения к бд по данным из настроек
-engine = create_engine(postgres_url, echo=True)
+engine = create_engine(postgres_url)
 
 def get_session():
     """Генератор сессий, чтобы получать сессию как зависимость"""
@@ -34,6 +39,7 @@ def post_video(*, session: Session = Depends(get_session), video: PostVideoModel
     session.add(video_row) # или задано по умолчанию
     session.commit()
     session.refresh(video_row)
+    logger.info("Добавлена новая запись о видео")
     return video_row
 
 @app.get("/videos", response_model=list[Videos])
@@ -52,7 +58,11 @@ def get_videos(*, session: Session = Depends(get_session), filter_query: Annotat
         sql_query = sql_query.where(Videos.start_time < filter_query.start_time_to)
     videos = session.exec(sql_query).all()
     if not videos:
+        logger.info("Произошла попытка получить список видео, однако по предоставленным фильтрам они не найдены")
+        logger.debug(filter_query)
         raise HTTPException(status_code=404, detail="No videos were found")
+    else:
+        logger.info("Успешно отправлен список видео")
     return videos #В задании не сказано, какую информацию отдавать, поэтому отдаем все, что есть
 
 @app.get("/videos/{video_id}", response_model=Videos)
@@ -60,7 +70,10 @@ def get_video(*, session: Session = Depends(get_session), video_id: int):
     """Ручка для получения одиночго видео по id"""
     video = session.exec(select(Videos).where(Videos.id == video_id)).first()
     if not video:
+        logger.info(f"Произошла попытка получить видео, однако видео с id {video_id} не найдено")
         raise HTTPException(status_code=404, detail="Video not found")
+    else:
+        logger.info(f"Успешно отправлена информация о видео с id {video_id}")
     return video
 
 
@@ -69,11 +82,13 @@ def change_status(*, session: Session = Depends(get_session), video_id: int, sta
     """Ручка для обновления статуса видео"""
     video = session.exec(select(Videos).where(Videos.id == video_id)).first()
     if not video:
+        logger.info(f"Произошла попытка обновить статус видео, однако видео с id {video_id} не найдено")
         raise HTTPException(status_code=404, detail="Video not found")
     video.status = str(status.status)
     session.add(video)
     session.commit()
     session.refresh(video)
+    logger.info(f"Статус видео с id {video_id} успешно обновлен на {status.status}")
     return video
 
 
